@@ -116,9 +116,9 @@ class RankingClass():
     def G_Sheet_filling(self, dataframe):
 
         # working with the insiders deals page - first, reading the current data to clear them up
-        stock_report_pate = '11lzBveJVUSqtFJHLvy9Z3vcvqaBaFzuciFiHDAj0Nvg'
+        stock_report_page = '11lzBveJVUSqtFJHLvy9Z3vcvqaBaFzuciFiHDAj0Nvg'
         page = 'Report'
-        report_page_data = self.service.spreadsheets().values().get(spreadsheetId=stock_report_pate, range=f'{page}!A:BJ',
+        report_page_data = self.service.spreadsheets().values().get(spreadsheetId=stock_report_page, range=f'{page}!A:BJ',
                                                                     valueRenderOption='FORMATTED_VALUE',
                                                                     dateTimeRenderOption='FORMATTED_STRING').execute()
 
@@ -131,7 +131,7 @@ class RankingClass():
         for _ in sheet_data:  # число строк с текущим заполнением
             clear_up_range.append([str('')] * len(headers))
 
-        null_matrix = self.service.spreadsheets().values().batchUpdate(spreadsheetId=stock_report_pate, body={
+        null_matrix = self.service.spreadsheets().values().batchUpdate(spreadsheetId=stock_report_page, body={
             "valueInputOption": "USER_ENTERED",
             "data": [{"range": f"{page}",
                       "majorDimension": "ROWS",
@@ -139,18 +139,22 @@ class RankingClass():
         }).execute()
 
         # making appropriate range from the new dataframe
-        new_data = dataframe.values.tolist()
+        new_data_values = dataframe.values.tolist()
         new_d = [dataframe.columns.values.tolist()]
-        for i in new_data:
-            new_d.append(i)
+        for i in new_data_values:
+            new_d.append([str(i[:1][0])] + i[1:])
+        print(f'{new_d[0]}\n\n\n {new_d[1]}')
 
-        # заполнение новыми данными
-        results = self.service.spreadsheets().values().batchUpdate(spreadsheetId=stock_report_pate, body={
-            "valueInputOption": "USER_ENTERED",
-            "data": [{"range": f"{page}",
-                      "majorDimension": "ROWS",
-                      "values": new_d}]
-        }).execute()
+
+        resource = {"majorDimension": "ROWS", "values": new_d}
+        range = f"{page}!A:BJ";
+        self.service.spreadsheets().values().append(
+            spreadsheetId=stock_report_page,
+            range=range,
+            body=resource,
+            valueInputOption="USER_ENTERED"
+        ).execute()
+
 
 if __name__ == '__main__':
     RankingClass().preparing_rank_sheets()
