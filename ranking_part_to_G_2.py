@@ -32,17 +32,34 @@ class RankingClass():
         # results_rank_updated = service.spreadsheets().values().batchGet(spreadsheetId=ranking_page, ranges='A:AE', valueRenderOption='FORMATTED_VALUE', dateTimeRenderOption='FORMATTED_STRING').execute()
         rank_sheet_values_updated = results_rank_updated['valueRanges'][0]['values'][1:]
 
-        # making int values, cause they are strings from the source!
-        fixed_range = []
+        # making int and float values, cause they are strings from the source!
+        pre_fixed_range = []
         for v in rank_sheet_values_updated:
             fixed_values = []
             fixed_values.append(datetime.datetime.strptime(v[0], '%Y-%m-%d').date())  # making the first value (date) as date object
             for i in v[1:]: # taking all values except the first one (date)
                 try:
-                    fixed_values.append(float(i.replace(',', '.')))
+                    a = float(i.replace(',', '.'))
+                    if type(a) != float:
+                        a = float(0)
+                    fixed_values.append(a)
                 except ValueError:
                     fixed_values.append(i)
-            fixed_range.append(fixed_values)
+            pre_fixed_range.append(fixed_values)
+
+        # double check if all values are not empty
+        fixed_range = []
+        for i in pre_fixed_range:
+            new_line = []
+            for v in i:
+                if v == '':
+                    v = 0
+                    new_line.append(v)
+                else:
+                    new_line.append(v)
+            fixed_range.append(new_line)
+
+
 
         headers = results_rank_updated['valueRanges'][0]['values'][:1][0]
 
@@ -55,7 +72,7 @@ class RankingClass():
         df_R1 = pd.DataFrame(fixed_range, columns=headers)
         df_R1['Rank-MarketCap'] = df_R1['Рыночная капитализация, $млн.'].rank(ascending=True).astype(int)
         df_R1['Rank-Стоимость компании'] = df_R1['Стоимость компании, $млн.'].rank(ascending=True).astype(int)
-        df_R1['normalized_PS'] = [round(float(df_R1.loc[value, 'P/S'])+1000, 2) if df_R1.loc[value, 'P/S'] >0 else round(float(df_R1.loc[value, 'P/S'])+10000 ,2) for value in df_R1.index]
+        df_R1['normalized_PS'] = [round(float(df_R1.loc[value, 'P/S'])+1000, 2) if df_R1.loc[value, 'P/S'] >0  else round(float(df_R1.loc[value, 'P/S'])+10000 ,2) for value in df_R1.index]
         df_R1['Rank-PS'] = df_R1['normalized_PS'].rank(ascending=False).astype(int)
         df_R1['normalized_PE'] = [round(float(df_R1.loc[value, 'P/E']) + 1000, 2) if df_R1.loc[value, 'P/E'] > 0 else round(float(df_R1.loc[value, 'P/E']) + 10000, 2) for value in df_R1.index]
         df_R1['Rank-PE'] = df_R1['normalized_PE'].rank(ascending=False).astype(int)
@@ -256,7 +273,10 @@ class RankingClass():
                 float_target_b = float(b[20].replace(',','.'))
                 if a[1] == b[1] and float_target_a != float_target_b:
                     change_delta = float_target_a - float_target_b
-                    share_change_pct = (change_delta / float_target_b)*100
+                    try:
+                        share_change_pct = (change_delta / float_target_b)*100
+                    except: #division by zero exception
+                        share_change_pct = 0
                     module_share_pct = share_change_pct if share_change_pct >= 0 else share_change_pct * -1
                     targets_changed_list.append([a[0], b[0], a[1], a[2], a[20], b[20], round(change_delta, 2), round(share_change_pct, 2), a[30], b[30], round(module_share_pct ,2)])
 
